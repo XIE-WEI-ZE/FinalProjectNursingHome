@@ -26,7 +26,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Models\Dto\" />
     <Folder Include="wwwroot\images\members\" />
     <Folder Include="wwwroot\images\events\" />
     <Folder Include="wwwroot\images\community\" />

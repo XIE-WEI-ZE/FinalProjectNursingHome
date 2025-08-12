@@ -22,4 +22,7 @@ public partial class ShopProductPhoto
     public string? ThumbnailPhotoPath { get; set; }
 
     public string? LargePhotoPath { get; set; }
+
+    public virtual ShopProduct Product { get; set; } = null!;
+
 }

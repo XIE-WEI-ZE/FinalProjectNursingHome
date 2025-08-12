@@ -8,6 +8,7 @@ public partial class ShopProduct
     public int ProductId { get; set; }
 
     public string ProductName { get; set; } = null!;
+    public string Slug { get; set; } = null!;
 
     public DateTime CreateAt { get; set; }
 
@@ -34,4 +35,6 @@ public partial class ShopProduct
     public string? ThumbnailPhotoPath { get; set; }
 
     public string? LargePhotoPath { get; set; }
+
+    public virtual ShopCategory? Category { get; set; }
 }
