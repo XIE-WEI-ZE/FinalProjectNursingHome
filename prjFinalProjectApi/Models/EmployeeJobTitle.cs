@@ -9,5 +9,5 @@ public partial class EmployeeJobTitle
 
     public string? TitleName { get; set; }
 
-    public int? DepartmentIid { get; set; }
+    public int? DepartmentId { get; set; }
 }

@@ -7,13 +7,15 @@ public partial class Member
 {
     public int FMemberId { get; set; }
 
-    public string? FIdNumber { get; set; }
-
     public string? FName { get; set; }
+
+    public string? FPhone { get; set; }
 
     public string? FGender { get; set; }
 
     public DateOnly? FBirthDate { get; set; }
+
+    public string? FIdNumber { get; set; }
 
     public decimal? FHeight { get; set; }
 

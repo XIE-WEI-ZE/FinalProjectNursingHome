@@ -1,11 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
-// 改成 DbNursingHomeContext 的實際命名空間
 using prjFinalProjectApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. CORS（先用老師的 AllowAll 公版）
+// 1. CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", p =>
@@ -15,7 +14,7 @@ builder.Services.AddCors(options =>
 // 2. Controllers
 builder.Services.AddControllers();
 
-// 3. Swagger（Swashbuckle）
+// 3. Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {

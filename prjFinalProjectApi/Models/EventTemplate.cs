@@ -38,4 +38,10 @@ public partial class EventTemplate
     public DateTime? LastModifiedAt { get; set; }
 
     public int? LastModifiedBy { get; set; }
+
+    public string? Subtitle { get; set; }
+
+    public int? DurationMinutes { get; set; }
+
+    public string? CoverImageUrl { get; set; }
 }
