@@ -125,6 +125,8 @@ public partial class DbNursingHomeContext : DbContext
 
     public virtual DbSet<MemberDailyHealthRecord> MemberDailyHealthRecords { get; set; }
 
+    public virtual DbSet<MemberEmergencyContact> MemberEmergencyContacts { get; set; }
+
     public virtual DbSet<MemberMedicalHistory> MemberMedicalHistories { get; set; }
 
     public virtual DbSet<MemberSecurityLog> MemberSecurityLogs { get; set; }
@@ -175,7 +177,7 @@ public partial class DbNursingHomeContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Data Source=.;Initial Catalog=dbNursingHome;Integrated Security=True;Trust Server Certificate=True");
+        => optionsBuilder.UseSqlServer("Data Source=.;Initial Catalog=dbNursingHome;Integrated Security=True;Encrypt=True;Trust Server Certificate=True");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -547,7 +549,7 @@ public partial class DbNursingHomeContext : DbContext
             entity.ToTable("EmployeeJobTitle");
 
             entity.Property(e => e.JobTitleId).HasColumnName("JobTitleID");
-            entity.Property(e => e.DepartmentIid).HasColumnName("DepartmentIID");
+            entity.Property(e => e.DepartmentId).HasColumnName("DepartmentID");
             entity.Property(e => e.TitleName).HasMaxLength(100);
         });
 
@@ -760,7 +762,7 @@ public partial class DbNursingHomeContext : DbContext
                 .IsFixedLength()
                 .HasColumnName("EquipmentSupplierGUI");
             entity.Property(e => e.EquipmentSupplierName).HasMaxLength(50);
-            entity.Property(e => e.SupplierCategory).HasMaxLength(20);
+            entity.Property(e => e.SupplierKeyword).HasMaxLength(50);
         });
 
         modelBuilder.Entity<EventBatch>(entity =>
@@ -862,6 +864,7 @@ public partial class DbNursingHomeContext : DbContext
             entity.Property(e => e.EventName).HasMaxLength(100);
             entity.Property(e => e.LastModifiedAt).HasColumnType("datetime");
             entity.Property(e => e.Organizer).HasMaxLength(100);
+            entity.Property(e => e.Subtitle).HasMaxLength(200);
             entity.Property(e => e.TargetAudience).HasMaxLength(100);
         });
 
@@ -910,6 +913,9 @@ public partial class DbNursingHomeContext : DbContext
                 .HasColumnName("fName");
             entity.Property(e => e.FPasswordHash).HasColumnName("fPasswordHash");
             entity.Property(e => e.FPasswordSalt).HasColumnName("fPasswordSalt");
+            entity.Property(e => e.FPhone)
+                .HasMaxLength(100)
+                .HasColumnName("fPhone");
             entity.Property(e => e.FProfilePictureUrl)
                 .HasMaxLength(200)
                 .HasColumnName("fProfilePictureUrl");
@@ -947,6 +953,46 @@ public partial class DbNursingHomeContext : DbContext
             entity.Property(e => e.FPulse).HasColumnName("fPulse");
             entity.Property(e => e.FRecordDate).HasColumnName("fRecordDate");
             entity.Property(e => e.FSystolic).HasColumnName("fSystolic");
+        });
+
+        modelBuilder.Entity<MemberEmergencyContact>(entity =>
+        {
+            entity.HasKey(e => e.FId);
+
+            entity.Property(e => e.FId).HasColumnName("fId");
+            entity.Property(e => e.FAddress)
+                .HasMaxLength(50)
+                .HasColumnName("fAddress");
+            entity.Property(e => e.FCity)
+                .HasMaxLength(50)
+                .HasColumnName("fCity");
+            entity.Property(e => e.FContactName)
+                .HasMaxLength(50)
+                .HasColumnName("fContactName");
+            entity.Property(e => e.FCreatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("fCreatedAt");
+            entity.Property(e => e.FDistrict)
+                .HasMaxLength(50)
+                .HasColumnName("fDistrict");
+            entity.Property(e => e.FEmail)
+                .HasMaxLength(200)
+                .HasColumnName("fEmail");
+            entity.Property(e => e.FIsActive).HasColumnName("fIsActive");
+            entity.Property(e => e.FIsPrimary).HasColumnName("fIsPrimary");
+            entity.Property(e => e.FMemberId).HasColumnName("fMemberId");
+            entity.Property(e => e.FNotes)
+                .HasMaxLength(200)
+                .HasColumnName("fNotes");
+            entity.Property(e => e.FPhone)
+                .HasMaxLength(50)
+                .HasColumnName("fPhone");
+            entity.Property(e => e.FRelationship)
+                .HasMaxLength(10)
+                .HasColumnName("fRelationship");
+            entity.Property(e => e.FUpdatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("fUpdatedAt");
         });
 
         modelBuilder.Entity<MemberMedicalHistory>(entity =>
@@ -1167,6 +1213,7 @@ public partial class DbNursingHomeContext : DbContext
             entity.Property(e => e.DiscountRate).HasColumnType("decimal(5, 2)");
             entity.Property(e => e.LargePhotoPath).HasMaxLength(200);
             entity.Property(e => e.ProductName).HasMaxLength(40);
+            entity.Property(e => e.Slug).HasMaxLength(100);
             entity.Property(e => e.Summary).HasMaxLength(200);
             entity.Property(e => e.SupplierId).HasColumnName("SupplierID");
             entity.Property(e => e.ThumbnailPhotoPath).HasMaxLength(200);
@@ -1257,7 +1304,7 @@ public partial class DbNursingHomeContext : DbContext
             entity.Property(e => e.Address).HasMaxLength(50);
             entity.Property(e => e.ContactNumber).HasMaxLength(20);
             entity.Property(e => e.ContactPerson).HasMaxLength(20);
-            entity.Property(e => e.SupplierCategory).HasMaxLength(50);
+            entity.Property(e => e.SupplierKeyword).HasMaxLength(50);
             entity.Property(e => e.SuppliesSupplierGui)
                 .HasMaxLength(8)
                 .IsUnicode(false)
