@@ -37,4 +37,6 @@ public partial class ShopProduct
     public string? LargePhotoPath { get; set; }
 
     public virtual ShopCategory? Category { get; set; }
+
+    public string Slug { get; set; } = null!;
 }

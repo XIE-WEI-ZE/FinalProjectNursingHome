@@ -17,7 +17,7 @@ public partial class SuppliesSupplier
 
     public string? Address { get; set; }
 
-    public string? SupplierCategory { get; set; }
+    public string? SupplierKeyword { get; set; }
 
     public bool? Continued { get; set; }
 }
