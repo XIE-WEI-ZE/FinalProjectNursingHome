@@ -34,4 +34,6 @@ public partial class ShopProduct
     public string? ThumbnailPhotoPath { get; set; }
 
     public string? LargePhotoPath { get; set; }
+
+    public string Slug { get; set; } = null!;
 }
