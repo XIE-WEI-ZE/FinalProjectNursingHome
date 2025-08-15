@@ -30,8 +30,9 @@
     <Folder Include="wwwroot\images\events\" />
     <Folder Include="wwwroot\images\community\" />
     <Folder Include="wwwroot\images\employees\" />
+    <Folder Include="wwwroot\images\shops\ShopProductThumb\" />
+    <Folder Include="wwwroot\images\shops\ShopProductLarge\" />
     <Folder Include="wwwroot\images\stores\" />
-    <Folder Include="wwwroot\images\shops\" />
     <Folder Include="wwwroot\images\rooms\" />
   </ItemGroup>
 

@@ -7,6 +7,8 @@
 
         public string ProductName { get; set; } = "";
 
+        public int? OriginalPrice { get; set; }
+
         public int? SalePrice { get; set; }
 
         public string? ThumbnailPhotoPath { get; set; }
@@ -14,6 +16,8 @@
         public int CategoryID { get; set; }
 
         public string CategoryName { get; set; } = "";
+
+        public string Slug { get; set; } = "";
     }
 
     // 前台商品詳細頁用 DTO
@@ -24,6 +28,8 @@
         public string ProductName { get; set; } = "";
 
         public string Slug { get; set; } = null!;
+
+        public int? OriginalPrice { get; set; }
 
         public int? SalePrice { get; set; }
 
