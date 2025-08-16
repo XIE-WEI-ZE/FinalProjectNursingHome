@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using prjFinalProjectApi.Models;
-using prjFinalProjectApi.Helpers; 
+using prjFinalProjectApi.Helpers;
 using System.Security.Claims;
 using System.Text;
 
@@ -14,6 +14,9 @@ builder.Services.AddCors(o => o.AddPolicy("AllowAll", p =>
     p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
 builder.Services.AddControllers();
+
+builder.Services.AddScoped<EmailSender>();
+builder.Services.AddSingleton<OneTimeTokenHelper>();
 
 // Swagger + JWT
 builder.Services.AddEndpointsApiExplorer();
@@ -64,11 +67,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwt.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
             ClockSkew = TimeSpan.Zero,
-            NameClaimType = ClaimTypes.Name 
+            NameClaimType = ClaimTypes.Name
         };
     });
 
 builder.Services.AddAuthorization();
+
+
 
 var app = builder.Build();
 

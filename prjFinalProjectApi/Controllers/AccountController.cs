@@ -74,7 +74,7 @@ namespace prjFinalProjectApi.Controllers
         }
 
         [HttpPost("login")]
-        public IActionResult Login([FromBody] LoginDto dto)
+        public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
             var member = _context.Members.FirstOrDefault(m => m.FAccount == dto.Account);
 
@@ -103,8 +103,15 @@ namespace prjFinalProjectApi.Controllers
                 60
             );
 
+
             //  登入成功紀錄
             LogSecurityEvent(member.FMemberId, "LoginSuccess", "登入成功");
+
+            await SendEmailAsync(
+            member.FEmail!,
+            "登入成功通知",
+            $"<h3>親愛的 {member.FName}，您好！</h3><p>您已於 {DateTime.Now:yyyy/MM/dd HH:mm:ss} 成功登入系統。</p>"
+            );
 
             return Ok(new
             {
@@ -165,23 +172,19 @@ namespace prjFinalProjectApi.Controllers
         {
             try
             {
-                //Console.WriteLine("=== GoogleLogin ===");
-                //Console.WriteLine("Raw idToken: " + json.GetRawText());
-
                 var idToken = json.GetRawText().Trim('"');
 
                 var payload = await Google.Apis.Auth.GoogleJsonWebSignature.ValidateAsync(idToken);
-                //Console.WriteLine($"Google 驗證成功：{payload.Email} - {payload.Name}");
-
                 var email = payload.Email;
                 var name = payload.Name;
                 var externalId = payload.Subject;
 
-                var member = await _context.Members
-                    .FirstOrDefaultAsync(m => m.FEmail == email && m.FLoginProvider == "Google");
+                // 找出同 email 的帳號，不管是用哪種方式註冊
+                var member = await _context.Members.FirstOrDefaultAsync(m => m.FEmail == email);
 
                 if (member == null)
                 {
+                    //  完全新帳號，建立 Google 帳號
                     member = new Member
                     {
                         FEmail = email,
@@ -195,9 +198,20 @@ namespace prjFinalProjectApi.Controllers
 
                     _context.Members.Add(member);
                     await _context.SaveChangesAsync();
-                    //Console.WriteLine("新增 Google 使用者：" + member.FEmail);
+                }
+                else
+                {
+                    //  已經有帳號存在
+                    //  更新登入方式為 Google（讓他下次可用 Google 直接登入）
+                    if (string.IsNullOrEmpty(member.FLoginProvider))
+                    {
+                        member.FLoginProvider = "Google";
+                        member.FExternalId = externalId;
+                        await _context.SaveChangesAsync();
+                    }
                 }
 
+                // 登入成功，產生 JWT Token
                 var token = JwtHelper.GenerateToken(
                     member.FMemberId,
                     member.FAccount,
@@ -208,8 +222,24 @@ namespace prjFinalProjectApi.Controllers
                     60
                 );
 
-                //  登入成功記錄（含 IP）
-                await LogSecurityEvent(member.FMemberId, "LoginSuccess", "Google 登入成功");
+                //  登入成功紀錄
+                await LogSecurityEvent(member.FMemberId, "LoginSuccess", "Google 登入成功（帳號整合）");
+
+                var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+                if (ip == "::1") ip = "127.0.0.1";
+
+                await SendEmailAsync(
+                    member.FEmail!,
+                    "Google 登入通知",
+                    $"""
+                    <h3>親愛的 {member.FName}，您好：</h3>
+                    <p>您已於 <strong>{DateTime.Now:yyyy/MM/dd HH:mm:ss}</strong> 成功使用 <span style='color:green;'>Google 第三方登入</span>。</p>
+                      <p><strong>登入 IP 位址：</strong> {ip}</p>
+                      <p>若非您本人操作，請立即聯絡系統管理員。</p>
+                      <hr/>
+                      <small>本信件為系統自動通知，請勿回覆</small>
+                    """
+                 );
 
                 return Ok(new
                 {
@@ -220,7 +250,6 @@ namespace prjFinalProjectApi.Controllers
             }
             catch (Exception ex)
             {
-                //  登入失敗也記錄（memberId 不知道就放 null）
                 await LogSecurityEvent(null, "LoginFailed", $"Google 登入失敗：{ex.Message}");
 
                 return BadRequest(new
@@ -234,6 +263,7 @@ namespace prjFinalProjectApi.Controllers
 
 
 
+
         private async Task LogSecurityEvent(int? memberId, string eventType, string? notes)
         {
             try
@@ -241,7 +271,6 @@ namespace prjFinalProjectApi.Controllers
                 var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
                 if (ip == "::1") ip = "127.0.0.1";
 
-                //  裁切欄位長度（避免超過 DB 欄位長度）
                 eventType = string.IsNullOrEmpty(eventType) ? null :
                             eventType.Length > 50 ? eventType.Substring(0, 50) : eventType;
 
@@ -251,6 +280,8 @@ namespace prjFinalProjectApi.Controllers
                 ip = string.IsNullOrEmpty(ip) ? null :
                      ip.Length > 200 ? ip.Substring(0, 200) : ip;
 
+                // 每次 Log 時自己 new 一個新的 context
+                using var db = new DbNursingHomeContext();
                 var log = new MemberSecurityLog
                 {
                     FMemberId = memberId,
@@ -260,14 +291,15 @@ namespace prjFinalProjectApi.Controllers
                     FCreatedAt = DateTime.Now
                 };
 
-                _context.MemberSecurityLogs.Add(log);
-                await _context.SaveChangesAsync();
+                db.MemberSecurityLogs.Add(log);
+                await db.SaveChangesAsync();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"LogSecurityEvent 錯誤 : {ex.Message}");
             }
         }
+
 
 
 
@@ -286,7 +318,7 @@ namespace prjFinalProjectApi.Controllers
             var query = _context.MemberSecurityLogs
                 .Where(log => log.FMemberId == member.FMemberId)
                 .OrderByDescending(log => log.FCreatedAt)
-                .Take(30); 
+                .Take(30);
 
             var totalCount = query.Count();
             var logs = query
@@ -308,6 +340,41 @@ namespace prjFinalProjectApi.Controllers
                 logs
             });
         }
+
+        private async Task<bool> SendEmailAsync(string toEmail, string subject, string body)
+        {
+            try
+            {
+                var smtpConfig = _config.GetSection("Smtp");
+                var smtpHost = smtpConfig["Host"];
+                var smtpPort = int.Parse(smtpConfig["Port"]);
+                var smtpAccount = smtpConfig["Account"];
+                var smtpPassword = smtpConfig["Password"];
+                var fromName = smtpConfig["FromName"];
+
+                var message = new System.Net.Mail.MailMessage();
+                message.From = new System.Net.Mail.MailAddress(smtpAccount, fromName);
+                message.To.Add(toEmail);
+                message.Subject = subject;
+                message.Body = body;
+                message.IsBodyHtml = true;
+
+                using (var client = new System.Net.Mail.SmtpClient(smtpHost, smtpPort))
+                {
+                    client.Credentials = new System.Net.NetworkCredential(smtpAccount, smtpPassword);
+                    client.EnableSsl = true;
+                    await client.SendMailAsync(message);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"寄信錯誤: {ex.Message}");
+                return false;
+            }
+        }
+
 
 
     }
