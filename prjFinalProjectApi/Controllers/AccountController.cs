@@ -20,12 +20,18 @@ namespace prjFinalProjectApi.Controllers
         private readonly DbNursingHomeContext _context;
         private readonly IWebHostEnvironment _env;
         private readonly IConfiguration _config;
+        private readonly OneTimeTokenHelper _ott;
 
-        public AccountController(DbNursingHomeContext context, IWebHostEnvironment env, IConfiguration config)
+        public AccountController(
+            DbNursingHomeContext context,
+            IWebHostEnvironment env,
+            IConfiguration config,
+            OneTimeTokenHelper ott)                  
         {
             _context = context;
             _env = env;
             _config = config;
+            _ott = ott;                              
         }
 
         [HttpPost("register")]
@@ -111,7 +117,8 @@ namespace prjFinalProjectApi.Controllers
             await SendEmailAsync(
             member.FEmail!,
             "登入成功通知",
-            $"<h3>親愛的 {member.FName}，您好！</h3><p>您已於 {DateTime.Now:yyyy/MM/dd HH:mm:ss} 成功登入系統。</p>"
+            $"<h3>親愛的 {member.FName}，您好！</h3><p>您已於 {DateTime.Now:yyyy/MM/dd HH:mm:ss} 成功登入系統。</p>" +
+            $" <p>若非您本人操作，請立即聯絡系統管理員。</p>\n  <hr/>\n  <small>本信件為系統自動通知，請勿回覆</small>"
             );
 
             return Ok(new
@@ -383,38 +390,48 @@ namespace prjFinalProjectApi.Controllers
             if (member == null)
                 return BadRequest(new { message = "查無此 Email" });
 
-            // 組成前端的重設密碼連結（只帶 email，不帶 token）
-            string resetLink = $"http://localhost:4200/show/reset-password?email={dto.Email}";
+            //  產生一次性 Token（PasswordReset）
+            string token = _ott.CreateToken("PasswordReset", member.FMemberId, minutes: 30);
+
+            //  寄出的連結帶 token，不再帶 email
+            string resetLink = $"http://localhost:4200/show/reset-password?token={Uri.EscapeDataString(token)}";
 
             string subject = "重設密碼通知";
             string body = $@"
-                           <h3>親愛的 {member.FName}，您好：</h3>
-                           <p>請點擊以下連結重設您的密碼：</p>
-                           <p><a href='{resetLink}'>{resetLink}</a></p>
-                           <p>若您沒有請求此操作，請忽略此信。</p>
-                           ";
+            <h3>親愛的 {member.FName}，您好：</h3>
+            <p>請於 30 分鐘內點擊以下連結重設您的密碼：</p>
+            <p><a href='{resetLink}'>{resetLink}</a></p>
+            <p>若您沒有請求此操作，請忽略此信。</p>";
 
-            await SendEmailAsync(dto.Email, subject, body);
-
+            await SendEmailAsync(member.FEmail!, subject, body);
             return Ok(new { message = "密碼重設連結已寄出，請查收您的信箱。" });
         }
+
 
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
         {
+            //  透過 token 驗證與取得 memberId
+            if (string.IsNullOrWhiteSpace(dto.Token))
+                return BadRequest(new { message = "缺少驗證資訊" });
+
+            var memberId = _ott.ValidateAndGetMemberId("PasswordReset", dto.Token);
+            if (memberId == null)
+                return Unauthorized(new { message = "重設連結無效或已過期" });
+
             if (dto.NewPassword != dto.ConfirmPassword)
                 return BadRequest(new { message = "兩次密碼不一致" });
 
-            var member = await _context.Members.FirstOrDefaultAsync(m => m.FEmail == dto.Email);
+            var member = await _context.Members.FirstOrDefaultAsync(m => m.FMemberId == memberId.Value);
             if (member == null)
-                return NotFound(new { message = "查無此帳號" });
+                return NotFound(new { message = "會員不存在" });
 
+            // 更新密碼（維持你原本 PBKDF2）
             byte[] salt = GenerateSalt();
             string hashedPassword = HashPassword(dto.NewPassword, salt);
 
             member.FPasswordSalt = Convert.ToBase64String(salt);
             member.FPasswordHash = hashedPassword;
-
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "密碼已成功重設" });

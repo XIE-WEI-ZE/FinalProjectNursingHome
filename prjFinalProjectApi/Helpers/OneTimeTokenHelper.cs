@@ -1,4 +1,5 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+﻿// Helpers/OneTimeTokenHelper.cs
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
@@ -9,6 +10,7 @@ namespace prjFinalProjectApi.Helpers
     public sealed class OneTimeTokenHelper
     {
         private readonly string _key, _issuer, _audience;
+
         public OneTimeTokenHelper(IConfiguration cfg)
         {
             _key = cfg["Jwt:Key"]!;
@@ -16,23 +18,29 @@ namespace prjFinalProjectApi.Helpers
             _audience = cfg["Jwt:Audience"]!;
         }
 
-        public string CreateUnlockToken(int memberId, int minutes = 30)
+        public string CreateToken(string purpose, int memberId, int minutes = 30)
         {
             var claims = new[]
             {
-                new Claim("Purpose", "Unlock"),
+                new Claim("Purpose", purpose ?? "None"),
                 new Claim("MemberId", memberId.ToString())
             };
+
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
             var token = new JwtSecurityToken(
-                issuer: _issuer, audience: _audience, claims: claims,
+                issuer: _issuer,
+                audience: _audience,
+                claims: claims,
                 expires: DateTime.UtcNow.AddMinutes(minutes),
-                signingCredentials: creds);
+                signingCredentials: creds
+            );
+
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
-        public int? ValidateAndGetMemberId(string token)
+        public int? ValidateAndGetMemberId(string expectedPurpose, string token)
         {
             var handler = new JwtSecurityTokenHandler();
             var param = new TokenValidationParameters
@@ -46,9 +54,11 @@ namespace prjFinalProjectApi.Helpers
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key)),
                 ClockSkew = TimeSpan.Zero
             };
+
             var principal = handler.ValidateToken(token, param, out _);
             var purpose = principal.FindFirstValue("Purpose");
-            if (purpose != "Unlock") return null;
+            if (purpose != expectedPurpose) return null;
+
             var idVal = principal.FindFirstValue("MemberId");
             return int.TryParse(idVal, out var id) ? id : (int?)null;
         }
