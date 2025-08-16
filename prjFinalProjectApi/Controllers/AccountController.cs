@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using prjFinalProjectApi.Helpers;
 using prjFinalProjectApi.Models;
+using prjFinalProjectApi.Models.Dto;
 using prjFinalProjectApi.Models.Dtos;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -375,6 +376,49 @@ namespace prjFinalProjectApi.Controllers
             }
         }
 
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
+        {
+            var member = await _context.Members.FirstOrDefaultAsync(m => m.FEmail == dto.Email);
+            if (member == null)
+                return BadRequest(new { message = "查無此 Email" });
+
+            // 組成前端的重設密碼連結（只帶 email，不帶 token）
+            string resetLink = $"http://localhost:4200/show/reset-password?email={dto.Email}";
+
+            string subject = "重設密碼通知";
+            string body = $@"
+                           <h3>親愛的 {member.FName}，您好：</h3>
+                           <p>請點擊以下連結重設您的密碼：</p>
+                           <p><a href='{resetLink}'>{resetLink}</a></p>
+                           <p>若您沒有請求此操作，請忽略此信。</p>
+                           ";
+
+            await SendEmailAsync(dto.Email, subject, body);
+
+            return Ok(new { message = "密碼重設連結已寄出，請查收您的信箱。" });
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+        {
+            if (dto.NewPassword != dto.ConfirmPassword)
+                return BadRequest(new { message = "兩次密碼不一致" });
+
+            var member = await _context.Members.FirstOrDefaultAsync(m => m.FEmail == dto.Email);
+            if (member == null)
+                return NotFound(new { message = "查無此帳號" });
+
+            byte[] salt = GenerateSalt();
+            string hashedPassword = HashPassword(dto.NewPassword, salt);
+
+            member.FPasswordSalt = Convert.ToBase64String(salt);
+            member.FPasswordHash = hashedPassword;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "密碼已成功重設" });
+        }
 
 
     }
