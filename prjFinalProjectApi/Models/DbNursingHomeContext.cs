@@ -1213,7 +1213,7 @@ public partial class DbNursingHomeContext : DbContext
             entity.Property(e => e.DiscountRate).HasColumnType("decimal(5, 2)");
             entity.Property(e => e.LargePhotoPath).HasMaxLength(200);
             entity.Property(e => e.ProductName).HasMaxLength(40);
-            entity.Property(e => e.Slug).HasMaxLength(100);
+            //entity.Property(e => e.Slug).HasMaxLength(100);
             entity.Property(e => e.Summary).HasMaxLength(200);
             entity.Property(e => e.SupplierId).HasColumnName("SupplierID");
             entity.Property(e => e.ThumbnailPhotoPath).HasMaxLength(200);

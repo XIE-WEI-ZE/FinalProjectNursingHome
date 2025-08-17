@@ -38,5 +38,5 @@ public partial class ShopProduct
 
     public virtual ShopCategory? Category { get; set; }
 
-    public string Slug { get; set; } = null!;
+    //public string Slug { get; set; } = null!;
 }
