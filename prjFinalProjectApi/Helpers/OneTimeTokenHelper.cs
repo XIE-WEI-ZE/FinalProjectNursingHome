@@ -42,25 +42,33 @@ namespace prjFinalProjectApi.Helpers
 
         public int? ValidateAndGetMemberId(string expectedPurpose, string token)
         {
-            var handler = new JwtSecurityTokenHandler();
-            var param = new TokenValidationParameters
+            try
             {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
-                ValidIssuer = _issuer,
-                ValidAudience = _audience,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key)),
-                ClockSkew = TimeSpan.Zero
-            };
+                var handler = new JwtSecurityTokenHandler();
+                var param = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = _issuer,
+                    ValidAudience = _audience,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key)),
+                    ClockSkew = TimeSpan.Zero
+                };
 
-            var principal = handler.ValidateToken(token, param, out _);
-            var purpose = principal.FindFirstValue("Purpose");
-            if (purpose != expectedPurpose) return null;
+                var principal = handler.ValidateToken(token, param, out _);
+                var purpose = principal.FindFirstValue("Purpose");
+                if (purpose != expectedPurpose) return null;
 
-            var idVal = principal.FindFirstValue("MemberId");
-            return int.TryParse(idVal, out var id) ? id : (int?)null;
+                var idVal = principal.FindFirstValue("MemberId");
+                return int.TryParse(idVal, out var id) ? id : (int?)null;
+            }
+            catch
+            {
+                return null; // 無效 / 過期 / 簽章錯誤，一律視為無效
+            }
         }
+
     }
 }
